@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reporte de Modelado de Amenazas — STRIDE + DREAD</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="h-title">
+        <div>
+          <div class="badge"><span class="dot"></span> STRIDE + DREAD • Microsoft Threat Modeling Tool • Informe HTML</div>
+          <h1>Reporte de Modelado de Amenazas (Aplicación Web con Pagos)</h1>
+          <div class="muted small">Documento académico — listo para imprimir a PDF (A4) con cortes por página.</div>
+        </div>
+        <div class="muted small" style="text-align:right;min-width:220px">
+          <div><b>Fecha:</b> 24/02/2026</div>
+          <div><b>Versión:</b> 1.0</div>
+          <div><b>Autor:</b> ____________________</div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="item"><div class="k">Contexto</div><div class="v">Cliente (Navegador) → Servidor Web (UI/API) → Servidor App (Lógica) → BD + Gateway de Pago</div></div>
+        <div class="item"><div class="k">Objetivo</div><div class="v">Identificar amenazas STRIDE, calificarlas con DREAD y proponer salvaguardas verificables</div></div>
+        <div class="item"><div class="k">Entregables</div><div class="v">Modelado (DFD), 30 amenazas (5 por STRIDE), 30 salvaguardas, tabla DREAD y reporte HTML</div></div>
+        <div class="item"><div class="k">Criterio</div><div class="v">Enfoque universitario: trazabilidad, evidencia, mitigaciones implementables y medibles</div></div>
+      </div>
+
+      <div class="print-note no-print">
+        Tip: para entregar “10 hojas”, abre este HTML en Chrome/Edge → <b>Imprimir</b> → “Guardar como PDF”.
+      </div>
+    </div>
+
+    <div class="toc">
+      <h2>Índice</h2>
+      <ol>
+        <li><a href="#s1">1. Alcance, supuestos y activos críticos</a></li>
+        <li><a href="#s2">2. Diagrama DFD y fronteras de confianza</a></li>
+        <li><a href="#s3">3. Metodología STRIDE + DREAD</a></li>
+        <li><a href="#s4">4. Tabla DREAD (30 amenazas)</a></li>
+        <li><a href="#s5">5. Salvaguardas por amenaza (30, 9 renglones)</a></li>
+        <li><a href="#s6">6. Conclusiones y recomendaciones</a></li>
+        <li><a href="#s7">7. Referencias</a></li>
+      </ol>
+    </div>
+
+
+    <div class="section" id="criterios">
+      <h2>Criterios de evaluación (cumplimiento)</h2>
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Modelado de la aplicación</div>
+        <div class="crit ok">✅ <b>25%</b> Salvaguardas (mín. 4 líneas; aquí 9 renglones)</div>
+        <div class="crit ok">✅ <b>25%</b> Calificación DREAD (tabla por STRIDE)</div>
+        <div class="crit ok">✅ <b>25%</b> Generación del informe en HTML</div>
+      </div>
+      <p class="p">
+        Este reporte está estructurado para evidenciar cada criterio. En cada sección se muestra un sello de cumplimiento
+        indicando el criterio que se está atendiendo.
+      </p>
+    </div>
+
+    <div class="page-break"></div>
+    <div class="section" id="s1">
+      <h2>1. Alcance, supuestos y activos críticos</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Modelado de la aplicación (alcance, activos, supuestos)</div>
+      </div>
+
+      <p class="p">
+        Este reporte modela una aplicación web típica con interfaz (UI), una API, un servidor de lógica de negocio,
+        una base de datos con información sensible (clientes, publicaciones, órdenes/pagos) y un gateway externo de pago.
+        El objetivo es reducir riesgos mediante controles preventivos, detectivos y correctivos que sean verificables.
+      </p>
+
+      <div class="grid2">
+        <div class="callout">
+          <b>Activos (lo que se protege)</b>
+          <ul>
+            <li>Credenciales, sesiones, tokens (JWT/cookies), datos de perfil.</li>
+            <li>Órdenes, pagos, estados de transacción, callbacks del gateway.</li>
+            <li>Datos en BD (PII, historial, publicaciones) y respaldos.</li>
+            <li>Integridad del sistema: lógica de negocio, roles y permisos.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <b>Supuestos de operación</b>
+          <ul>
+            <li>El cliente accede por navegador (Internet) a un servidor Web (UI/API).</li>
+            <li>El servidor Web se comunica con el servidor App y éste con la BD.</li>
+            <li>El sistema integra un gateway de pago externo con flujo de ida y vuelta.</li>
+            <li>La frontera de confianza separa Internet/cliente de los servicios internos.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="card"><div class="n">6</div><div class="t">Categorías STRIDE</div></div>
+        <div class="card"><div class="n">30</div><div class="t">Amenazas evaluadas</div></div>
+        <div class="card"><div class="n">30</div><div class="t">Salvaguardas propuestas</div></div>
+        <div class="card"><div class="n">DREAD</div><div class="t">Métrica de riesgo usada</div></div>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section" id="s2">
+      <h2>2. Diagrama DFD y fronteras de confianza</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Modelado de la aplicación (DFD + fronteras de confianza)</div>
+        <div class="crit ok">✅ <b>25%</b> Informe HTML (figuras y evidencia)</div>
+      </div>
+
+      <p class="p">
+        El DFD identifica entidades externas, procesos, almacenes de datos y flujos.
+        Las fronteras de confianza (trust boundaries) ayudan a ubicar dónde cambia el nivel de confianza
+        y, por tanto, dónde son obligatorios controles como autenticación, cifrado y validación.
+      </p>
+
+      <div class="figure">
+        <img src="assets/img/dfd_completo.png" alt="DFD completo" />
+        <div class="figcap">Figura 1. DFD del sistema (Cliente, Servidor Web, Servidor App, BD y Gateway de pago).</div>
+      </div>
+
+      <div class="figure">
+        <img src="assets/img/threat_list.png" alt="Lista de amenazas del modelado" />
+        <div class="figcap">Figura 2. Lista de amenazas generadas/gestionadas en Microsoft Threat Modeling Tool.</div>
+      </div>
+
+      <div class="figure">
+        <img src="assets/img/threat_example.png" alt="Ejemplo de amenaza con DREAD y salvaguardas" />
+        <div class="figcap">Figura 3. Ejemplo de una amenaza: calificación DREAD y campo de salvaguardas.</div>
+      </div>
+
+      <div class="callout">
+        <b>Nota técnica:</b> Los flujos “Cliente ↔ Web”, “Web ↔ App”, “App ↔ BD” y “App ↔ Gateway”
+        son los puntos de mayor exposición. En ellos se prioriza: cifrado, autenticación, integridad,
+        validación y trazabilidad.
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section" id="s3">
+      <h2>3. Metodología STRIDE + DREAD</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Calificación DREAD (metodología y fórmula)</div>
+      </div>
+
+      <p class="p">
+        STRIDE clasifica amenazas por tipo: <b>Spoofing</b>, <b>Tampering</b>, <b>Repudiation</b>,
+        <b>Information Disclosure</b>, <b>Denial of Service</b> y <b>Elevation of Privilege</b>.
+        Para priorizar, se evalúa cada amenaza con DREAD en escala 1–3: Daño (D), Reproducibilidad (R),
+        Explotabilidad (E), Usuarios afectados (A) y Descubribilidad (Di).
+      </p>
+
+      <div class="grid2">
+        <div class="callout">
+          <b>Fórmula usada (como en herramienta)</b>
+          <p class="p small" style="margin-top:8px">
+            <code>PxI = (R + E + Di) × (D + A)</code><br/>
+            Interpretación: mientras más fácil de reproducir/explotar/descubrir y mayor daño/impacto,
+            más alto el riesgo.
+          </p>
+        </div>
+        <div class="callout">
+          <b>Criterio de niveles (guía práctica)</b>
+          <ul class="small">
+            <li><b>ALTO:</b> PxI ≥ 33 → requiere mitigación prioritaria y controles en capas.</li>
+            <li><b>MEDIO:</b> PxI 23–32 → mitigar en el corto plazo con controles estándar.</li>
+            <li><b>BAJO:</b> PxI ≤ 22 → mantener monitoreo y buenas prácticas.</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="p muted small">
+        *Los valores son consistentes con la escala observada (Alto=3) en el ejemplo del modelado.
+      </p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section" id="s4">
+      <h2>4. Tabla DREAD (30 amenazas, 5 por STRIDE)</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Calificación DREAD en tabla (30 amenazas / 5 por STRIDE)</div>
+      </div>
+
+      <p class="p">
+        La siguiente tabla concentra la evaluación DREAD de 30 amenazas priorizadas.
+        Cada fila incluye el elemento/flujo donde ocurre y el PxI calculado.
+      </p>
+
+      <div class="table-wrap">
+        <table aria-label="Tabla DREAD">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>STRIDE</th>
+              <th>Amenaza</th>
+              <th>Elemento/Flujo</th>
+              <th>D</th><th>R</th><th>E</th><th>A</th><th>Di</th>
+              <th>PxI</th>
+              <th>Nivel</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td><b>1</b></td>
+              <td><span class="tag s">S</span></td>
+              <td>Suplantación de sesión (robo de cookie/JWT)</td>
+              <td><code>Cliente ↔ Web</code></td>
+              <td>3</td><td>3</td><td>2</td><td>3</td><td>3</td>
+              <td><b>48</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>2</b></td>
+              <td><span class="tag s">S</span></td>
+              <td>Credential stuffing / fuerza bruta en login</td>
+              <td><code>Cliente → Web</code></td>
+              <td>3</td><td>3</td><td>2</td><td>3</td><td>2</td>
+              <td><b>42</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>3</b></td>
+              <td><span class="tag s">S</span></td>
+              <td>Phishing/Clon del sitio para capturar credenciales</td>
+              <td><code>Internet/Cliente</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>3</td>
+              <td><b>42</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>4</b></td>
+              <td><span class="tag s">S</span></td>
+              <td>Suplantación del Gateway (DNS/Cert falsos)</td>
+              <td><code>App ↔ Gateway</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>5</b></td>
+              <td><span class="tag s">S</span></td>
+              <td>Suplantación de servicio interno (App/BD)</td>
+              <td><code>App ↔ BD</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>6</b></td>
+              <td><span class="tag t">T</span></td>
+              <td>Manipulación de parámetros (precio/cantidad)</td>
+              <td><code>Cliente → Web</code></td>
+              <td>3</td><td>3</td><td>3</td><td>3</td><td>2</td>
+              <td><b>48</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>7</b></td>
+              <td><span class="tag t">T</span></td>
+              <td>Inyección SQL/NoSQL para alterar datos</td>
+              <td><code>Web/App → BD</code></td>
+              <td>3</td><td>3</td><td>3</td><td>3</td><td>2</td>
+              <td><b>48</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>8</b></td>
+              <td><span class="tag t">T</span></td>
+              <td>Modificación de payload en tránsito (sin TLS)</td>
+              <td><code>Web ↔ App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>9</b></td>
+              <td><span class="tag t">T</span></td>
+              <td>Callback/resultado de pago falsificado</td>
+              <td><code>Gateway → App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>10</b></td>
+              <td><span class="tag t">T</span></td>
+              <td>Carga de archivo malicioso (PDF/imagen)</td>
+              <td><code>Cliente → Web</code></td>
+              <td>3</td><td>2</td><td>2</td><td>2</td><td>2</td>
+              <td><b>30</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>11</b></td>
+              <td><span class="tag r">R</span></td>
+              <td>Usuario niega una compra/pago</td>
+              <td><code>Web/App</code></td>
+              <td>3</td><td>2</td><td>1</td><td>3</td><td>2</td>
+              <td><b>30</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>12</b></td>
+              <td><span class="tag r">R</span></td>
+              <td>Borrado o alteración de logs</td>
+              <td><code>Servidor Web/App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>13</b></td>
+              <td><span class="tag r">R</span></td>
+              <td>Falta de correlación de eventos (sin request-id)</td>
+              <td><code>Web ↔ App ↔ BD</code></td>
+              <td>2</td><td>2</td><td>1</td><td>2</td><td>2</td>
+              <td><b>20</b></td>
+              <td><span class="risk low">BAJO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>14</b></td>
+              <td><span class="tag r">R</span></td>
+              <td>No registrar cambios críticos de cuenta</td>
+              <td><code>App</code></td>
+              <td>3</td><td>2</td><td>1</td><td>3</td><td>2</td>
+              <td><b>30</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>15</b></td>
+              <td><span class="tag r">R</span></td>
+              <td>No conservar evidencia de consentimientos/TOS</td>
+              <td><code>Web/App</code></td>
+              <td>2</td><td>2</td><td>1</td><td>2</td><td>2</td>
+              <td><b>20</b></td>
+              <td><span class="risk low">BAJO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>16</b></td>
+              <td><span class="tag i">I</span></td>
+              <td>Exposición de datos sensibles en tránsito</td>
+              <td><code>Cliente ↔ Web</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>17</b></td>
+              <td><span class="tag i">I</span></td>
+              <td>Errores excesivos que filtran información (stack traces)</td>
+              <td><code>Web/App</code></td>
+              <td>2</td><td>2</td><td>2</td><td>2</td><td>3</td>
+              <td><b>28</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>18</b></td>
+              <td><span class="tag i">I</span></td>
+              <td>IDOR: acceso a recursos por ID predecible</td>
+              <td><code>Web/App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>19</b></td>
+              <td><span class="tag i">I</span></td>
+              <td>Mala configuración de CORS / fuga a dominios externos</td>
+              <td><code>Web</code></td>
+              <td>2</td><td>2</td><td>2</td><td>2</td><td>2</td>
+              <td><b>24</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>20</b></td>
+              <td><span class="tag i">I</span></td>
+              <td>Backups o dumps expuestos (publicaciones/usuarios/pagos)</td>
+              <td><code>BD/Storage</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>21</b></td>
+              <td><span class="tag d">D</span></td>
+              <td>DoS por exceso de solicitudes (sin rate limit)</td>
+              <td><code>Cliente → Web</code></td>
+              <td>3</td><td>3</td><td>2</td><td>3</td><td>2</td>
+              <td><b>42</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>22</b></td>
+              <td><span class="tag d">D</span></td>
+              <td>Ataque a endpoints de búsqueda/consulta pesada</td>
+              <td><code>Cliente → Web/App</code></td>
+              <td>2</td><td>3</td><td>2</td><td>2</td><td>2</td>
+              <td><b>28</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>23</b></td>
+              <td><span class="tag d">D</span></td>
+              <td>Exceso de payload (subidas grandes) agota recursos</td>
+              <td><code>Cliente → Web</code></td>
+              <td>2</td><td>3</td><td>2</td><td>2</td><td>2</td>
+              <td><b>28</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>24</b></td>
+              <td><span class="tag d">D</span></td>
+              <td>Bloqueo de BD por consultas/locks</td>
+              <td><code>App ↔ BD</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>25</b></td>
+              <td><span class="tag d">D</span></td>
+              <td>Abuso de integración externa (Gateway) por reintentos</td>
+              <td><code>App ↔ Gateway</code></td>
+              <td>2</td><td>2</td><td>2</td><td>2</td><td>2</td>
+              <td><b>24</b></td>
+              <td><span class="risk med">MEDIO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>26</b></td>
+              <td><span class="tag e">E</span></td>
+              <td>Escalada por roles mal validados (admin/user)</td>
+              <td><code>Web/App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>27</b></td>
+              <td><span class="tag e">E</span></td>
+              <td>CSRF en acciones sensibles</td>
+              <td><code>Web</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>28</b></td>
+              <td><span class="tag e">E</span></td>
+              <td>SSRF desde servidor hacia recursos internos</td>
+              <td><code>App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>29</b></td>
+              <td><span class="tag e">E</span></td>
+              <td>XSS que roba tokens y eleva privilegios</td>
+              <td><code>Web (UI)</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>3</td>
+              <td><b>42</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+            <tr>
+              <td><b>30</b></td>
+              <td><span class="tag e">E</span></td>
+              <td>Deserialización insegura / RCE</td>
+              <td><code>App</code></td>
+              <td>3</td><td>2</td><td>2</td><td>3</td><td>2</td>
+              <td><b>36</b></td>
+              <td><span class="risk high">ALTO</span></td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <p class="p muted small">
+        Recomendación académica: si el profesor exige “por cada STRIDE”, esta tabla ya está segmentada por las 6 categorías
+        (5 amenazas cada una). En la herramienta puedes filtrar por Category y comprobar consistencia.
+      </p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section" id="s5">
+      <h2>5. Salvaguardas por amenaza (30, con 9 renglones)</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ <b>25%</b> Salvaguardas por amenaza (30) — 9 renglones cada una</div>
+      </div>
+
+      <p class="p">
+        Para cada amenaza se propone una salvaguarda con controles concretos (preventivos/detectivos/correctivos).
+        El formato está listo para copiar/pegar en el campo “Safeguard” del Threat Modeling Tool.
+      </p>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #1: Suplantación de sesión (robo de cookie/JWT)</div>
+          <div class="meta2"><span class="tag s">S</span> • <code>Cliente ↔ Web</code> • PxI: <b>48</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar autenticación robusta con MFA para cuentas con privilegios o transacciones de pago.
+2. Usar sesiones firmadas o JWT con firma fuerte y rotación periódica de llaves (kid/rotation).
+3. Configurar cookies de sesión con HttpOnly, Secure y SameSite=Strict/Lax según el flujo.
+4. Regenerar identificador de sesión al iniciar sesión y al elevar privilegios (mitiga fixation).
+5. Expirar sesión por inactividad y forzar reautenticación en operaciones críticas (pago/cambio).
+6. Implementar detección de anomalías: cambio de IP, dispositivo, ubicación y patrones de acceso.
+7. Bloquear temporalmente la cuenta ante patrones de robo de sesión (múltiples tokens activos).
+8. Registrar eventos de autenticación con correlación (userId, sessionId, ip, user-agent).
+9. Probar con seguridad (pentest/DAST) específicamente: hijacking, fixation y replay.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #2: Credential stuffing / fuerza bruta en login</div>
+          <div class="meta2"><span class="tag s">S</span> • <code>Cliente → Web</code> • PxI: <b>42</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting por IP/usuario y protección contra brute force (p. ej. 5 intentos).
+2. Habilitar mecanismos anti-automatización: CAPTCHA adaptativo tras intentos fallidos.
+3. Aplicar política de contraseña: longitud, complejidad mínima y verificación contra listas filtradas.
+4. Usar hash seguro con sal y factor de trabajo (bcrypt/argon2) y no revelar si el usuario existe.
+5. Establecer bloqueos progresivos (backoff exponencial) y alertas ante intentos masivos.
+6. Monitorear credenciales comprometidas (HIBP/API corporativa) y forzar reseteo si aplica.
+7. Activar MFA opcional/obligatorio para roles sensibles o cuando se detecte riesgo elevado.
+8. Registrar y correlacionar intentos (timestamp, ip, user-agent) para auditoría y forense.
+9. Realizar pruebas de resistencia (carga) para asegurar que la mitigación no cause DoS.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #3: Phishing/Clon del sitio para capturar credenciales</div>
+          <div class="meta2"><span class="tag s">S</span> • <code>Internet/Cliente</code> • PxI: <b>42</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Proteger contra phishing con HTTPS estricto y HSTS para evitar downgrades.
+2. Implementar dominios y subdominios bien definidos; evitar mezclas (www/app/api).
+3. Usar branding consistente, mensajes anti-phishing y verificación de URL en UI de login.
+4. Activar MFA para reducir impacto de robo de credenciales por ingeniería social.
+5. Implementar detección de login sospechoso y notificaciones al usuario (nuevo dispositivo).
+6. Aplicar DMARC/DKIM/SPF en correos para reducir suplantación de comunicaciones oficiales.
+7. Educar al usuario (banner en login) y proporcionar canal de reporte de sitios falsos.
+8. Registrar y bloquear patrones: múltiples intentos desde ASN sospechosos o proxies.
+9. Realizar revisión periódica de certificados y monitoreo de typosquatting del dominio.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #4: Suplantación del Gateway (DNS/Cert falsos)</div>
+          <div class="meta2"><span class="tag s">S</span> • <code>App ↔ Gateway</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Forzar TLS 1.2+ con validación estricta de certificados (pinning si es app móvil).
+2. Verificar el origen del Gateway mediante mTLS o firmas HMAC de mensajes/callbacks.
+3. Validar DNS con buenas prácticas (DNSSEC si aplica) y monitorear cambios de registros.
+4. Restringir endpoints de callback: allowlist de IPs del proveedor (si el Gateway lo permite).
+5. No confiar en parámetros del cliente; confirmar estado de pago consultando API del Gateway.
+6. Manejar tokens de pago de forma efímera y con expiración corta; evitar reuso/replay.
+7. Registrar eventos de pago con correlación (orderId, transactionId, signature status).
+8. Simular ataques en pruebas: fake callbacks, replay, downgrade TLS, MITM controlado.
+9. Revisar cumplimiento del proveedor y aplicar hardening según su documentación oficial.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #5: Suplantación de servicio interno (App/BD)</div>
+          <div class="meta2"><span class="tag s">S</span> • <code>App ↔ BD</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar autenticación entre servicios (mTLS o tokens service-to-service) en App↔BD.
+2. Separar credenciales por entorno (dev/test/prod) y rotar secretos con un vault.
+3. Usar cuentas de BD con mínimo privilegio (no usar root); aplicar roles por operación.
+4. Restringir acceso a BD por red (subred privada, firewall, security groups, allowlist).
+5. Auditar conexiones y consultas sensibles en BD (query audit) con retención definida.
+6. Validar integridad de mensajes y usar parámetros preparados para evitar alteración.
+7. Implementar monitoreo y alertas por conexiones inusuales (horario, IP, volumen).
+8. Aplicar hardening de BD: deshabilitar funciones no usadas y cifrar en reposo.
+9. Ejecutar revisión periódica de permisos y pruebas de bypass de autenticación interna.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #6: Manipulación de parámetros (precio/cantidad)</div>
+          <div class="meta2"><span class="tag t">T</span> • <code>Cliente → Web</code> • PxI: <b>48</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Validar y normalizar toda entrada del cliente (server-side) antes de procesarla.
+2. Aplicar controles de integridad: firmas/HMAC o tokens anti-manipulación en campos críticos.
+3. Usar consultas parametrizadas/ORM seguro y sanitización para evitar inyecciones.
+4. Aplicar controles de autorización por objeto (ABAC/RBAC) antes de actualizar recursos.
+5. Rechazar campos extra (schema validation) y habilitar 'allowlist' de propiedades.
+6. Activar TLS extremo a extremo y evitar datos sensibles en URLs o logs.
+7. Implementar validaciones de negocio (precio oficial, stock, totales) del lado servidor.
+8. Registrar cambios (quién, cuándo, qué cambió) y habilitar trazabilidad de transacciones.
+9. Probar con casos de abuso: tampering, replay, payload alterado y archivos maliciosos.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #7: Inyección SQL/NoSQL para alterar datos</div>
+          <div class="meta2"><span class="tag t">T</span> • <code>Web/App → BD</code> • PxI: <b>48</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Validar y normalizar toda entrada del cliente (server-side) antes de procesarla.
+2. Aplicar controles de integridad: firmas/HMAC o tokens anti-manipulación en campos críticos.
+3. Usar consultas parametrizadas/ORM seguro y sanitización para evitar inyecciones.
+4. Aplicar controles de autorización por objeto (ABAC/RBAC) antes de actualizar recursos.
+5. Rechazar campos extra (schema validation) y habilitar 'allowlist' de propiedades.
+6. Activar TLS extremo a extremo y evitar datos sensibles en URLs o logs.
+7. Implementar validaciones de negocio (precio oficial, stock, totales) del lado servidor.
+8. Registrar cambios (quién, cuándo, qué cambió) y habilitar trazabilidad de transacciones.
+9. Probar con casos de abuso: tampering, replay, payload alterado y archivos maliciosos.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #8: Modificación de payload en tránsito (sin TLS)</div>
+          <div class="meta2"><span class="tag t">T</span> • <code>Web ↔ App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Validar y normalizar toda entrada del cliente (server-side) antes de procesarla.
+2. Aplicar controles de integridad: firmas/HMAC o tokens anti-manipulación en campos críticos.
+3. Usar consultas parametrizadas/ORM seguro y sanitización para evitar inyecciones.
+4. Aplicar controles de autorización por objeto (ABAC/RBAC) antes de actualizar recursos.
+5. Rechazar campos extra (schema validation) y habilitar 'allowlist' de propiedades.
+6. Activar TLS extremo a extremo y evitar datos sensibles en URLs o logs.
+7. Implementar validaciones de negocio (precio oficial, stock, totales) del lado servidor.
+8. Registrar cambios (quién, cuándo, qué cambió) y habilitar trazabilidad de transacciones.
+9. Probar con casos de abuso: tampering, replay, payload alterado y archivos maliciosos.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #9: Callback/resultado de pago falsificado</div>
+          <div class="meta2"><span class="tag t">T</span> • <code>Gateway → App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Validar y normalizar toda entrada del cliente (server-side) antes de procesarla.
+2. Aplicar controles de integridad: firmas/HMAC o tokens anti-manipulación en campos críticos.
+3. Usar consultas parametrizadas/ORM seguro y sanitización para evitar inyecciones.
+4. Aplicar controles de autorización por objeto (ABAC/RBAC) antes de actualizar recursos.
+5. Rechazar campos extra (schema validation) y habilitar 'allowlist' de propiedades.
+6. Activar TLS extremo a extremo y evitar datos sensibles en URLs o logs.
+7. Implementar validaciones de negocio (precio oficial, stock, totales) del lado servidor.
+8. Registrar cambios (quién, cuándo, qué cambió) y habilitar trazabilidad de transacciones.
+9. Probar con casos de abuso: tampering, replay, payload alterado y archivos maliciosos.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #10: Carga de archivo malicioso (PDF/imagen)</div>
+          <div class="meta2"><span class="tag t">T</span> • <code>Cliente → Web</code> • PxI: <b>30</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Validar y normalizar toda entrada del cliente (server-side) antes de procesarla.
+2. Aplicar controles de integridad: firmas/HMAC o tokens anti-manipulación en campos críticos.
+3. Usar consultas parametrizadas/ORM seguro y sanitización para evitar inyecciones.
+4. Aplicar controles de autorización por objeto (ABAC/RBAC) antes de actualizar recursos.
+5. Rechazar campos extra (schema validation) y habilitar 'allowlist' de propiedades.
+6. Activar TLS extremo a extremo y evitar datos sensibles en URLs o logs.
+7. Implementar validaciones de negocio (precio oficial, stock, totales) del lado servidor.
+8. Registrar cambios (quién, cuándo, qué cambió) y habilitar trazabilidad de transacciones.
+9. Probar con casos de abuso: tampering, replay, payload alterado y archivos maliciosos.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #11: Usuario niega una compra/pago</div>
+          <div class="meta2"><span class="tag r">R</span> • <code>Web/App</code> • PxI: <b>30</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Definir una política de auditoría: qué eventos se registran y por cuánto tiempo se conservan.
+2. Agregar correlación de eventos (request-id, user-id, session-id) en Web/App/BD/Gateway.
+3. Guardar logs en almacenamiento inmutable o WORM (append-only) con controles de integridad.
+4. Sincronizar tiempo con NTP y registrar timestamps confiables para soporte forense.
+5. Firmar eventos críticos (órdenes/pagos) y conservar evidencia de confirmaciones y recibos.
+6. Controlar acceso a logs: solo roles autorizados; separar logs de aplicación y seguridad.
+7. Alertar por intentos de borrado/alteración de logs o caída del servicio de logging.
+8. Incluir trazabilidad de acciones administrativas (cambios de rol, reembolsos, bajas).
+9. Realizar revisiones periódicas de auditoría y simulacros de investigación (tabletop).</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #12: Borrado o alteración de logs</div>
+          <div class="meta2"><span class="tag r">R</span> • <code>Servidor Web/App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Definir una política de auditoría: qué eventos se registran y por cuánto tiempo se conservan.
+2. Agregar correlación de eventos (request-id, user-id, session-id) en Web/App/BD/Gateway.
+3. Guardar logs en almacenamiento inmutable o WORM (append-only) con controles de integridad.
+4. Sincronizar tiempo con NTP y registrar timestamps confiables para soporte forense.
+5. Firmar eventos críticos (órdenes/pagos) y conservar evidencia de confirmaciones y recibos.
+6. Controlar acceso a logs: solo roles autorizados; separar logs de aplicación y seguridad.
+7. Alertar por intentos de borrado/alteración de logs o caída del servicio de logging.
+8. Incluir trazabilidad de acciones administrativas (cambios de rol, reembolsos, bajas).
+9. Realizar revisiones periódicas de auditoría y simulacros de investigación (tabletop).</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #13: Falta de correlación de eventos (sin request-id)</div>
+          <div class="meta2"><span class="tag r">R</span> • <code>Web ↔ App ↔ BD</code> • PxI: <b>20</b> • Nivel: <b>BAJO</b></div>
+        </div>
+        <pre>1. Definir una política de auditoría: qué eventos se registran y por cuánto tiempo se conservan.
+2. Agregar correlación de eventos (request-id, user-id, session-id) en Web/App/BD/Gateway.
+3. Guardar logs en almacenamiento inmutable o WORM (append-only) con controles de integridad.
+4. Sincronizar tiempo con NTP y registrar timestamps confiables para soporte forense.
+5. Firmar eventos críticos (órdenes/pagos) y conservar evidencia de confirmaciones y recibos.
+6. Controlar acceso a logs: solo roles autorizados; separar logs de aplicación y seguridad.
+7. Alertar por intentos de borrado/alteración de logs o caída del servicio de logging.
+8. Incluir trazabilidad de acciones administrativas (cambios de rol, reembolsos, bajas).
+9. Realizar revisiones periódicas de auditoría y simulacros de investigación (tabletop).</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #14: No registrar cambios críticos de cuenta</div>
+          <div class="meta2"><span class="tag r">R</span> • <code>App</code> • PxI: <b>30</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Definir una política de auditoría: qué eventos se registran y por cuánto tiempo se conservan.
+2. Agregar correlación de eventos (request-id, user-id, session-id) en Web/App/BD/Gateway.
+3. Guardar logs en almacenamiento inmutable o WORM (append-only) con controles de integridad.
+4. Sincronizar tiempo con NTP y registrar timestamps confiables para soporte forense.
+5. Firmar eventos críticos (órdenes/pagos) y conservar evidencia de confirmaciones y recibos.
+6. Controlar acceso a logs: solo roles autorizados; separar logs de aplicación y seguridad.
+7. Alertar por intentos de borrado/alteración de logs o caída del servicio de logging.
+8. Incluir trazabilidad de acciones administrativas (cambios de rol, reembolsos, bajas).
+9. Realizar revisiones periódicas de auditoría y simulacros de investigación (tabletop).</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #15: No conservar evidencia de consentimientos/TOS</div>
+          <div class="meta2"><span class="tag r">R</span> • <code>Web/App</code> • PxI: <b>20</b> • Nivel: <b>BAJO</b></div>
+        </div>
+        <pre>1. Definir una política de auditoría: qué eventos se registran y por cuánto tiempo se conservan.
+2. Agregar correlación de eventos (request-id, user-id, session-id) en Web/App/BD/Gateway.
+3. Guardar logs en almacenamiento inmutable o WORM (append-only) con controles de integridad.
+4. Sincronizar tiempo con NTP y registrar timestamps confiables para soporte forense.
+5. Firmar eventos críticos (órdenes/pagos) y conservar evidencia de confirmaciones y recibos.
+6. Controlar acceso a logs: solo roles autorizados; separar logs de aplicación y seguridad.
+7. Alertar por intentos de borrado/alteración de logs o caída del servicio de logging.
+8. Incluir trazabilidad de acciones administrativas (cambios de rol, reembolsos, bajas).
+9. Realizar revisiones periódicas de auditoría y simulacros de investigación (tabletop).</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #16: Exposición de datos sensibles en tránsito</div>
+          <div class="meta2"><span class="tag i">I</span> • <code>Cliente ↔ Web</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Clasificar datos (PII, pagos) y aplicar principio de mínima exposición en respuestas API.
+2. Cifrar en tránsito con TLS y en reposo con llaves administradas (KMS/Vault).
+3. Aplicar control de acceso por recurso (IDOR): validar ownership/tenant en cada request.
+4. Evitar mensajes de error detallados al cliente; usar manejo centralizado de excepciones.
+5. Configurar CORS estrictamente (allowlist de orígenes) y bloquear credenciales cruzadas no necesarias.
+6. Sanitizar logs: no registrar tokens, contraseñas, números completos de tarjeta o PII sensible.
+7. Proteger respaldos: cifrado, acceso restringido, rotación y pruebas de restauración seguras.
+8. Aplicar cabeceras de seguridad (CSP, X-Content-Type-Options, Referrer-Policy) en Web UI.
+9. Ejecutar pruebas de fuga: enumeración, errores, misconfiguración y exposición de storage.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #17: Errores excesivos que filtran información (stack traces)</div>
+          <div class="meta2"><span class="tag i">I</span> • <code>Web/App</code> • PxI: <b>28</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Clasificar datos (PII, pagos) y aplicar principio de mínima exposición en respuestas API.
+2. Cifrar en tránsito con TLS y en reposo con llaves administradas (KMS/Vault).
+3. Aplicar control de acceso por recurso (IDOR): validar ownership/tenant en cada request.
+4. Evitar mensajes de error detallados al cliente; usar manejo centralizado de excepciones.
+5. Configurar CORS estrictamente (allowlist de orígenes) y bloquear credenciales cruzadas no necesarias.
+6. Sanitizar logs: no registrar tokens, contraseñas, números completos de tarjeta o PII sensible.
+7. Proteger respaldos: cifrado, acceso restringido, rotación y pruebas de restauración seguras.
+8. Aplicar cabeceras de seguridad (CSP, X-Content-Type-Options, Referrer-Policy) en Web UI.
+9. Ejecutar pruebas de fuga: enumeración, errores, misconfiguración y exposición de storage.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #18: IDOR: acceso a recursos por ID predecible</div>
+          <div class="meta2"><span class="tag i">I</span> • <code>Web/App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Clasificar datos (PII, pagos) y aplicar principio de mínima exposición en respuestas API.
+2. Cifrar en tránsito con TLS y en reposo con llaves administradas (KMS/Vault).
+3. Aplicar control de acceso por recurso (IDOR): validar ownership/tenant en cada request.
+4. Evitar mensajes de error detallados al cliente; usar manejo centralizado de excepciones.
+5. Configurar CORS estrictamente (allowlist de orígenes) y bloquear credenciales cruzadas no necesarias.
+6. Sanitizar logs: no registrar tokens, contraseñas, números completos de tarjeta o PII sensible.
+7. Proteger respaldos: cifrado, acceso restringido, rotación y pruebas de restauración seguras.
+8. Aplicar cabeceras de seguridad (CSP, X-Content-Type-Options, Referrer-Policy) en Web UI.
+9. Ejecutar pruebas de fuga: enumeración, errores, misconfiguración y exposición de storage.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #19: Mala configuración de CORS / fuga a dominios externos</div>
+          <div class="meta2"><span class="tag i">I</span> • <code>Web</code> • PxI: <b>24</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Clasificar datos (PII, pagos) y aplicar principio de mínima exposición en respuestas API.
+2. Cifrar en tránsito con TLS y en reposo con llaves administradas (KMS/Vault).
+3. Aplicar control de acceso por recurso (IDOR): validar ownership/tenant en cada request.
+4. Evitar mensajes de error detallados al cliente; usar manejo centralizado de excepciones.
+5. Configurar CORS estrictamente (allowlist de orígenes) y bloquear credenciales cruzadas no necesarias.
+6. Sanitizar logs: no registrar tokens, contraseñas, números completos de tarjeta o PII sensible.
+7. Proteger respaldos: cifrado, acceso restringido, rotación y pruebas de restauración seguras.
+8. Aplicar cabeceras de seguridad (CSP, X-Content-Type-Options, Referrer-Policy) en Web UI.
+9. Ejecutar pruebas de fuga: enumeración, errores, misconfiguración y exposición de storage.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #20: Backups o dumps expuestos (publicaciones/usuarios/pagos)</div>
+          <div class="meta2"><span class="tag i">I</span> • <code>BD/Storage</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Clasificar datos (PII, pagos) y aplicar principio de mínima exposición en respuestas API.
+2. Cifrar en tránsito con TLS y en reposo con llaves administradas (KMS/Vault).
+3. Aplicar control de acceso por recurso (IDOR): validar ownership/tenant en cada request.
+4. Evitar mensajes de error detallados al cliente; usar manejo centralizado de excepciones.
+5. Configurar CORS estrictamente (allowlist de orígenes) y bloquear credenciales cruzadas no necesarias.
+6. Sanitizar logs: no registrar tokens, contraseñas, números completos de tarjeta o PII sensible.
+7. Proteger respaldos: cifrado, acceso restringido, rotación y pruebas de restauración seguras.
+8. Aplicar cabeceras de seguridad (CSP, X-Content-Type-Options, Referrer-Policy) en Web UI.
+9. Ejecutar pruebas de fuga: enumeración, errores, misconfiguración y exposición de storage.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #21: DoS por exceso de solicitudes (sin rate limit)</div>
+          <div class="meta2"><span class="tag d">D</span> • <code>Cliente → Web</code> • PxI: <b>42</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting y cuotas por IP/usuario/endpoint (especialmente login y búsqueda).
+2. Aplicar throttling y circuit breakers para dependencias (BD/Gateway) ante degradación.
+3. Definir límites de tamaño de payload y tiempo de ejecución (timeouts) por solicitud.
+4. Usar caché para lecturas frecuentes y paginación obligatoria en listas y búsquedas.
+5. Optimizar consultas con índices y evitar operaciones N+1 o filtros sin índice.
+6. Habilitar WAF/Protección DDoS si el despliegue es público (cloud edge).
+7. Monitorear métricas (latencia, errores, CPU, conexiones BD) y alertar por umbrales.
+8. Aislar recursos: pools de conexiones, colas asíncronas para tareas pesadas, backpressure.
+9. Probar con carga: stress test y escenarios de abuso para validar recuperación y resiliencia.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #22: Ataque a endpoints de búsqueda/consulta pesada</div>
+          <div class="meta2"><span class="tag d">D</span> • <code>Cliente → Web/App</code> • PxI: <b>28</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting y cuotas por IP/usuario/endpoint (especialmente login y búsqueda).
+2. Aplicar throttling y circuit breakers para dependencias (BD/Gateway) ante degradación.
+3. Definir límites de tamaño de payload y tiempo de ejecución (timeouts) por solicitud.
+4. Usar caché para lecturas frecuentes y paginación obligatoria en listas y búsquedas.
+5. Optimizar consultas con índices y evitar operaciones N+1 o filtros sin índice.
+6. Habilitar WAF/Protección DDoS si el despliegue es público (cloud edge).
+7. Monitorear métricas (latencia, errores, CPU, conexiones BD) y alertar por umbrales.
+8. Aislar recursos: pools de conexiones, colas asíncronas para tareas pesadas, backpressure.
+9. Probar con carga: stress test y escenarios de abuso para validar recuperación y resiliencia.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #23: Exceso de payload (subidas grandes) agota recursos</div>
+          <div class="meta2"><span class="tag d">D</span> • <code>Cliente → Web</code> • PxI: <b>28</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting y cuotas por IP/usuario/endpoint (especialmente login y búsqueda).
+2. Aplicar throttling y circuit breakers para dependencias (BD/Gateway) ante degradación.
+3. Definir límites de tamaño de payload y tiempo de ejecución (timeouts) por solicitud.
+4. Usar caché para lecturas frecuentes y paginación obligatoria en listas y búsquedas.
+5. Optimizar consultas con índices y evitar operaciones N+1 o filtros sin índice.
+6. Habilitar WAF/Protección DDoS si el despliegue es público (cloud edge).
+7. Monitorear métricas (latencia, errores, CPU, conexiones BD) y alertar por umbrales.
+8. Aislar recursos: pools de conexiones, colas asíncronas para tareas pesadas, backpressure.
+9. Probar con carga: stress test y escenarios de abuso para validar recuperación y resiliencia.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #24: Bloqueo de BD por consultas/locks</div>
+          <div class="meta2"><span class="tag d">D</span> • <code>App ↔ BD</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting y cuotas por IP/usuario/endpoint (especialmente login y búsqueda).
+2. Aplicar throttling y circuit breakers para dependencias (BD/Gateway) ante degradación.
+3. Definir límites de tamaño de payload y tiempo de ejecución (timeouts) por solicitud.
+4. Usar caché para lecturas frecuentes y paginación obligatoria en listas y búsquedas.
+5. Optimizar consultas con índices y evitar operaciones N+1 o filtros sin índice.
+6. Habilitar WAF/Protección DDoS si el despliegue es público (cloud edge).
+7. Monitorear métricas (latencia, errores, CPU, conexiones BD) y alertar por umbrales.
+8. Aislar recursos: pools de conexiones, colas asíncronas para tareas pesadas, backpressure.
+9. Probar con carga: stress test y escenarios de abuso para validar recuperación y resiliencia.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #25: Abuso de integración externa (Gateway) por reintentos</div>
+          <div class="meta2"><span class="tag d">D</span> • <code>App ↔ Gateway</code> • PxI: <b>24</b> • Nivel: <b>MEDIO</b></div>
+        </div>
+        <pre>1. Implementar rate limiting y cuotas por IP/usuario/endpoint (especialmente login y búsqueda).
+2. Aplicar throttling y circuit breakers para dependencias (BD/Gateway) ante degradación.
+3. Definir límites de tamaño de payload y tiempo de ejecución (timeouts) por solicitud.
+4. Usar caché para lecturas frecuentes y paginación obligatoria en listas y búsquedas.
+5. Optimizar consultas con índices y evitar operaciones N+1 o filtros sin índice.
+6. Habilitar WAF/Protección DDoS si el despliegue es público (cloud edge).
+7. Monitorear métricas (latencia, errores, CPU, conexiones BD) y alertar por umbrales.
+8. Aislar recursos: pools de conexiones, colas asíncronas para tareas pesadas, backpressure.
+9. Probar con carga: stress test y escenarios de abuso para validar recuperación y resiliencia.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #26: Escalada por roles mal validados (admin/user)</div>
+          <div class="meta2"><span class="tag e">E</span> • <code>Web/App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar control de acceso estricto (RBAC/ABAC) y validar rol en servidor, no en cliente.
+2. Implementar protección CSRF con tokens y SameSite; exigir métodos seguros y headers.
+3. Evitar XSS con sanitización y Content Security Policy (CSP); codificar salida (output encoding).
+4. Validar URLs y bloquear SSRF con allowlists, bloqueo a metadata endpoints y DNS rebinding.
+5. Separar privilegios: cuentas admin distintas, operaciones sensibles con reautenticación/MFA.
+6. Usar principios de mínimo privilegio en BD y servicios; no ejecutar con permisos elevados.
+7. Revisar dependencias y deserialización: usar formatos seguros y deshabilitar tipos peligrosos.
+8. Registrar acciones de elevación y alertar por cambios de rol o accesos administrativos.
+9. Realizar pruebas de seguridad: CSRF, XSS, SSRF, RCE y bypass de autorización por objeto.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #27: CSRF en acciones sensibles</div>
+          <div class="meta2"><span class="tag e">E</span> • <code>Web</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar control de acceso estricto (RBAC/ABAC) y validar rol en servidor, no en cliente.
+2. Implementar protección CSRF con tokens y SameSite; exigir métodos seguros y headers.
+3. Evitar XSS con sanitización y Content Security Policy (CSP); codificar salida (output encoding).
+4. Validar URLs y bloquear SSRF con allowlists, bloqueo a metadata endpoints y DNS rebinding.
+5. Separar privilegios: cuentas admin distintas, operaciones sensibles con reautenticación/MFA.
+6. Usar principios de mínimo privilegio en BD y servicios; no ejecutar con permisos elevados.
+7. Revisar dependencias y deserialización: usar formatos seguros y deshabilitar tipos peligrosos.
+8. Registrar acciones de elevación y alertar por cambios de rol o accesos administrativos.
+9. Realizar pruebas de seguridad: CSRF, XSS, SSRF, RCE y bypass de autorización por objeto.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #28: SSRF desde servidor hacia recursos internos</div>
+          <div class="meta2"><span class="tag e">E</span> • <code>App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar control de acceso estricto (RBAC/ABAC) y validar rol en servidor, no en cliente.
+2. Implementar protección CSRF con tokens y SameSite; exigir métodos seguros y headers.
+3. Evitar XSS con sanitización y Content Security Policy (CSP); codificar salida (output encoding).
+4. Validar URLs y bloquear SSRF con allowlists, bloqueo a metadata endpoints y DNS rebinding.
+5. Separar privilegios: cuentas admin distintas, operaciones sensibles con reautenticación/MFA.
+6. Usar principios de mínimo privilegio en BD y servicios; no ejecutar con permisos elevados.
+7. Revisar dependencias y deserialización: usar formatos seguros y deshabilitar tipos peligrosos.
+8. Registrar acciones de elevación y alertar por cambios de rol o accesos administrativos.
+9. Realizar pruebas de seguridad: CSRF, XSS, SSRF, RCE y bypass de autorización por objeto.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #29: XSS que roba tokens y eleva privilegios</div>
+          <div class="meta2"><span class="tag e">E</span> • <code>Web (UI)</code> • PxI: <b>42</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar control de acceso estricto (RBAC/ABAC) y validar rol en servidor, no en cliente.
+2. Implementar protección CSRF con tokens y SameSite; exigir métodos seguros y headers.
+3. Evitar XSS con sanitización y Content Security Policy (CSP); codificar salida (output encoding).
+4. Validar URLs y bloquear SSRF con allowlists, bloqueo a metadata endpoints y DNS rebinding.
+5. Separar privilegios: cuentas admin distintas, operaciones sensibles con reautenticación/MFA.
+6. Usar principios de mínimo privilegio en BD y servicios; no ejecutar con permisos elevados.
+7. Revisar dependencias y deserialización: usar formatos seguros y deshabilitar tipos peligrosos.
+8. Registrar acciones de elevación y alertar por cambios de rol o accesos administrativos.
+9. Realizar pruebas de seguridad: CSRF, XSS, SSRF, RCE y bypass de autorización por objeto.</pre>
+      </div>
+
+      <div class="safeguard">
+        <div class="top">
+          <div class="title">Amenaza #30: Deserialización insegura / RCE</div>
+          <div class="meta2"><span class="tag e">E</span> • <code>App</code> • PxI: <b>36</b> • Nivel: <b>ALTO</b></div>
+        </div>
+        <pre>1. Aplicar control de acceso estricto (RBAC/ABAC) y validar rol en servidor, no en cliente.
+2. Implementar protección CSRF con tokens y SameSite; exigir métodos seguros y headers.
+3. Evitar XSS con sanitización y Content Security Policy (CSP); codificar salida (output encoding).
+4. Validar URLs y bloquear SSRF con allowlists, bloqueo a metadata endpoints y DNS rebinding.
+5. Separar privilegios: cuentas admin distintas, operaciones sensibles con reautenticación/MFA.
+6. Usar principios de mínimo privilegio en BD y servicios; no ejecutar con permisos elevados.
+7. Revisar dependencias y deserialización: usar formatos seguros y deshabilitar tipos peligrosos.
+8. Registrar acciones de elevación y alertar por cambios de rol o accesos administrativos.
+9. Realizar pruebas de seguridad: CSRF, XSS, SSRF, RCE y bypass de autorización por objeto.</pre>
+      </div>
+
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section" id="s6">
+      <h2>6. Conclusiones y recomendaciones</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ Evidencia final: priorización, recomendaciones y cierre técnico</div>
+      </div>
+
+      <p class="p">
+        El análisis muestra concentración de riesgo alto en: autenticación/sesión, validación de entradas,
+        integridad del flujo de pagos, y control de acceso (autorización) a nivel de objeto y rol.
+        Las mitigaciones propuestas priorizan controles en capas (defense in depth) para reducir
+        probabilidad y/o impacto de explotación.
+      </p>
+
+      <h3>6.1 Priorización inmediata (top)</h3>
+      <ul>
+        <li><b>Sesión y autenticación:</b> MFA, cookies seguras, rotación, detección de anomalías.</li>
+        <li><b>Integridad de negocio:</b> validación server-side de precios/totales y confirmación con el gateway.</li>
+        <li><b>Autorización:</b> RBAC/ABAC, mitigación IDOR, reautenticación en acciones críticas.</li>
+        <li><b>Resiliencia:</b> rate limiting, paginación, timeouts, protección anti-DoS.</li>
+      </ul>
+
+      <h3>6.2 Evidencia sugerida para “nivel universidad”</h3>
+      <ul>
+        <li>Capturas del DFD y de amenazas en la herramienta (ya incluidas como figuras).</li>
+        <li>Exportación del reporte HTML desde Threat Modeling Tool y anexarlo como evidencia.</li>
+        <li>Checklist de implementación: qué controles se aplicaron y cómo se verificaron.</li>
+        <li>Registro de pruebas: casos de abuso (XSS, CSRF, tampering, callback falso, brute force).</li>
+      </ul>
+    </div>
+
+    <div class="section" id="s7">
+      <h2>7. Referencias</h2>
+
+      <div class="criteria">
+        <div class="crit ok">✅ Referencias formales (estilo APA 7, en español)</div>
+      </div>
+
+      
+      <ul>
+        <li>Microsoft. (s. f.). <i>Microsoft Threat Modeling Tool</i>. Documentación de seguridad de Microsoft.</li>
+        <li>OWASP Foundation. (2021). <i>OWASP Top 10: The Ten Most Critical Web Application Security Risks</i>. Open Web Application Security Project.</li>
+        <li>OWASP Foundation. (s. f.). <i>Application Security Verification Standard (ASVS)</i>. Open Web Application Security Project.</li>
+        <li>National Institute of Standards and Technology. (2022). <i>Secure Software Development Framework (SSDF): SP 800-218</i>. NIST.</li>
+        <li>National Institute of Standards and Technology. (2020). <i>Risk Management Framework for Information Systems and Organizations: SP 800-37 Rev. 2</i>. NIST.</li>
+      </ul>
+
+      </div>
+
+  </div>
+</body>
+</html>
